@@ -3,7 +3,102 @@ import random
 import json
 import os
 
-# --- Your existing constants and CSS (omitted here for brevity) ---
+# --- Custom CSS for hacking green GUI and XP bar ---
+st.markdown(
+    """
+    <style>
+    /* Dark background and green neon text */
+    .css-1d391kg {
+        background-color: #000000;
+        color: #00ff00;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    /* Title styling */
+    .css-1v0mbdj h1 {
+        color: #00ff00;
+        text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+        font-weight: bold;
+        font-family: 'Consolas', Courier, monospace;
+    }
+    /* Buttons styling */
+    div.stButton > button:first-child {
+        background-color: black;
+        color: #00ff00;
+        border: 2px solid #00ff00;
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: bold;
+        transition: background-color 0.3s, color 0.3s;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #00ff00;
+        color: black;
+        cursor: crosshair;
+    }
+    /* Upgrade boxes */
+    .upgrade-box {
+        border: 1px solid #00ff00;
+        padding: 10px;
+        margin-bottom: 10px;
+        font-family: 'Courier New', Courier, monospace;
+        background-color: #001100;
+        box-shadow: 0 0 8px #00ff00;
+        border-radius: 5px;
+    }
+    /* Stats styling */
+    .stats {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 18px;
+        padding: 10px;
+        background-color: #001a00;
+        border: 1px solid #00ff00;
+        box-shadow: 0 0 6px #00ff00;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        white-space: pre;
+    }
+    /* XP bar container */
+    .xp-bar {
+        position: relative;
+        background-color: #003300;
+        border: 1px solid #00ff00;
+        border-radius: 5px;
+        width: 100%;
+        height: 25px;
+        margin-bottom: 15px;
+    }
+    /* XP bar fill */
+    .xp-bar-inner {
+        background: linear-gradient(90deg, #00ff00, #00cc00);
+        height: 100%;
+        border-radius: 5px;
+        transition: width 0.4s ease;
+    }
+    /* XP text overlay */
+    .xp-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        top: 0;
+        left: 0;
+        color: black;
+        font-weight: bold;
+        line-height: 25px;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    /* Mod menu box */
+    .mod-menu-box {
+        background-color: #002200;
+        border: 1px solid #00ff00;
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px #007700;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 LEADERBOARD_FILE = "leaderboard.json"
 
@@ -73,7 +168,7 @@ def init_state():
         "level": 1,
         "minigame1_unlocked": False,
         "minigame2_unlocked": False,
-        "max_level": 10,
+        "max_level": 30,
     }
     for key, val in defaults.items():
         if key not in st.session_state:
@@ -84,7 +179,7 @@ init_state()
 # --- Level up logic ---
 
 def maybe_level_up():
-    while st.session_state.xp >= st.session_state.xp_needed and st.session_state.level < st.session_state.max_level:
+    while st.session_state.level < st.session_state.max_level and st.session_state.xp >= st.session_state.xp_needed:
         st.session_state.xp -= st.session_state.xp_needed
         st.session_state.level += 1
         st.session_state.xp_needed = int(st.session_state.xp_needed * 1.5)
@@ -94,6 +189,11 @@ def maybe_level_up():
             st.session_state.minigame1_unlocked = True
         if st.session_state.level >= 8:
             st.session_state.minigame2_unlocked = True
+    
+    # Cap XP at xp_needed if max level reached
+    if st.session_state.level >= st.session_state.max_level:
+        if st.session_state.xp > st.session_state.xp_needed:
+            st.session_state.xp = st.session_state.xp_needed
 
 # --- Upgrade helpers and costs ---
 
@@ -162,13 +262,15 @@ def buy_upgrade(name):
 # --- XP bar and stats ---
 
 def draw_xp_bar():
-    xp_percent = int((st.session_state.xp / st.session_state.xp_needed) * 100)
+    # Cap at 100% width when max level reached
+    if st.session_state.level >= st.session_state.max_level:
+        xp_percent = 100
+    else:
+        xp_percent = int((st.session_state.xp / st.session_state.xp_needed) * 100)
     bar_html = f"""
-    <div style="position: relative; background-color: #003300; border: 1px solid #00ff00; border-radius: 5px; width: 100%; height: 25px; margin-bottom: 15px;">
-      <div style="background: linear-gradient(90deg, #00ff00, #00cc00); height: 100%; border-radius: 5px; width: {xp_percent}%; transition: width 0.4s ease;"></div>
-      <div style="position: absolute; width: 100%; text-align: center; top: 0; left: 0; color: black; font-weight: bold; line-height: 25px; font-family: 'Courier New', Courier, monospace;">
-        Level {st.session_state.level} — XP: {st.session_state.xp} / {st.session_state.xp_needed} ({xp_percent}%)
-      </div>
+    <div class="xp-bar">
+      <div class="xp-bar-inner" style="width: {xp_percent}%;"></div>
+      <div class="xp-text">Level {st.session_state.level} — XP: {st.session_state.xp} / {st.session_state.xp_needed} ({xp_percent}%)</div>
     </div>
     """
     st.markdown(bar_html, unsafe_allow_html=True)
@@ -181,7 +283,7 @@ Crypto per Click    : {st.session_state.crypto_per_click}
 Password Drop Chance: {int(st.session_state.password_drop_chance * 100)}%
 Hacker Level        : {st.session_state.level}
 """
-    st.markdown(f'<div style="font-family: \'Courier New\', monospace; font-size: 18px; background-color: #001a00; border: 1px solid #00ff00; padding: 10px; box-shadow: 0 0 6px #00ff00; margin-bottom: 15px; border-radius: 5px; white-space: pre;">{stats}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="stats">{stats}</div>', unsafe_allow_html=True)
     draw_xp_bar()
 
 # --- The core click function, also updates leaderboard ---
@@ -195,12 +297,76 @@ def game_update():
 
 def click_crypto():
     st.session_state.crypto += st.session_state.crypto_per_click
-    st.session_state.xp += 5
+    if st.session_state.level < st.session_state.max_level:
+        st.session_state.xp += 5
     maybe_level_up()
     if random.random() < st.session_state.password_drop_chance:
         st.session_state.passwords += 1
         st.toast("Password Cracked! +1 Password 🎁")
     game_update()
+
+# --- Mod Menu with more features ---
+
+def mod_menu():
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.subheader("🛠️ Mod Menu")
+
+    if st.session_state.level < 3:
+        st.info("Reach Hacker Level 3 to unlock the Mod Menu.")
+        return
+
+    # Feature 1: Brute Force Password (spends resources, gains passwords)
+    if st.button("💻 Brute Force Password (Cost: 20 Crypto, 1 Password)"):
+        if st.session_state.crypto >= 20 and st.session_state.passwords >= 1:
+            st.session_state.crypto -= 20
+            st.session_state.passwords -= 1
+            gained = random.randint(2, 5)
+            st.session_state.passwords += gained
+            st.success(f"Brute Force successful! You cracked {gained} passwords.")
+            st.session_state.xp += 15
+            maybe_level_up()
+            game_update()
+        else:
+            st.error("Not enough Crypto or Passwords for Brute Force.")
+
+    # Feature 2: Firewall Override (Cost: 50 Crypto), temporary boost
+    if st.session_state.level >= 5:
+        if st.button("🛡️ Firewall Override (Cost: 50 Crypto)"):
+            if st.session_state.crypto >= 50:
+                st.session_state.crypto -= 50
+                st.session_state.crypto_per_click += 20
+                st.success("Firewall overridden! +20 Crypto per click temporarily.")
+                st.session_state.xp += 20
+                maybe_level_up()
+                game_update()
+            else:
+                st.error("Not enough Crypto for Firewall Override.")
+
+    # Feature 3: Password Sniffer (Level 10 unlock)
+    if st.session_state.level >= 10:
+        if st.button("📡 Password Sniffer (Cost: 100 Crypto, 5 Passwords)"):
+            if st.session_state.crypto >= 100 and st.session_state.passwords >= 5:
+                st.session_state.crypto -= 100
+                st.session_state.passwords -= 5
+                # Increase password drop chance significantly for next 20 clicks
+                st.session_state.password_drop_boost_turns = 20
+                st.success("Password Sniffer activated! +25% password drop chance for next 20 clicks.")
+                st.session_state.xp += 30
+                maybe_level_up()
+                game_update()
+            else:
+                st.error("Not enough resources for Password Sniffer.")
+
+# --- Track password drop boost turns and apply boost ---
+
+def apply_password_drop_boost():
+    if "password_drop_boost_turns" not in st.session_state:
+        st.session_state.password_drop_boost_turns = 0
+    if st.session_state.password_drop_boost_turns > 0:
+        st.session_state.password_drop_chance_boosted = min(st.session_state.password_drop_chance + 0.25, 0.75)
+        st.session_state.password_drop_boost_turns -= 1
+    else:
+        st.session_state.password_drop_chance_boosted = st.session_state.password_drop_chance
 
 # --- Upgrades UI ---
 
@@ -224,22 +390,14 @@ def show_upgrades():
         if st.button(f"Buy", key=f"buy_{key}"):
             buy_upgrade(key)
 
-# --- Mod Menu omitted for brevity ---
+# --- Player name input with rerun ---
 
-# --- Minigames omitted for brevity ---
-
-# --- Now handle player name input with hiding input on submission ---
-
-if "player_name" not in st.session_state:
-    st.session_state.player_name = ""
-
-if st.session_state.player_name == "":
-    name = st.text_input("Enter your hacker handle (name):")
-    if name:
+if "player_name" not in st.session_state or st.session_state.player_name == "":
+    name = st.text_input("Enter your hacker handle (name):").strip()
+    if name != "":
         st.session_state.player_name = name
         st.experimental_rerun()
     st.stop()
-
 else:
     st.success(f"Welcome, {st.session_state.player_name}! Let's start hacking!")
 
@@ -251,17 +409,27 @@ show_stats()
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
+apply_password_drop_boost()  # Adjust password drop for boosts
+
 if st.button("🪙 Hack Crypto"):
-    click_crypto()
+    # Use boosted password drop chance if boost is active
+    actual_password_drop_chance = st.session_state.password_drop_chance_boosted
+    st.session_state.crypto += st.session_state.crypto_per_click
+    if st.session_state.level < st.session_state.max_level:
+        st.session_state.xp += 5
+    maybe_level_up()
+    if random.random() < actual_password_drop_chance:
+        st.session_state.passwords += 1
+        st.toast("Password Cracked! +1 Password 🎁")
+    game_update()
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
 show_upgrades()
 
-st.markdown("<hr>", unsafe_allow_html=True)
+mod_menu()
 
-# Mod menu and minigames would be called here, omitted for brevity
-# e.g., mod_menu(), minigame_1(), minigame_2()
+st.markdown("<hr>", unsafe_allow_html=True)
 
 display_leaderboard()
 
